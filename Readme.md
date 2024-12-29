@@ -1,4 +1,4 @@
-```markdown
+
 # Node.js and Browser Global Objects, Modules, and Patterns
 
 ## Global Objects
@@ -222,4 +222,102 @@ An IIFE is a JavaScript function that runs as soon as it is defined. It looks li
 
 5. **Caching the Module**
    - Caches the module so that it doesn't have to read it again. A module is read only once.
-```
+
+# Google V8 JavaScript Engine
+
+## What happens when you give your code to Google V8 JavaScript Engine?
+
+### 1. Parsing
+
+- **Syntax Analysis/Parsing**: Tokens are converted into an Abstract Syntax Tree (AST), which is a tree representation of the structure of the code. You can use [AST Explorer](https://astexplorer.net) to see the AST of your code.
+
+### 2. Compilation
+
+- **Ignition Interpreter**: The AST is passed to the Ignition Interpreter, which converts the AST into bytecode. This bytecode is then executed.
+- **Profiling**: While the code is running, the V8 engine profiles the code to identify potential optimizations. If the code runs multiple times, the V8 engine optimizes it using Just-In-Time (JIT) Compilation, producing optimized machine code. This optimized code is stored in the code cache. The Turbofan Compiler handles this process, making assumptions about variables' types. If these assumptions are incorrect, the code is deoptimized, and the process is repeated.
+- **Inline Caching**: A technique used by V8 to optimize the code by storing the optimized code in the code cache.
+- **Copy Elision**: A compiler optimization technique that eliminates unnecessary copying of objects.
+
+### 3. Garbage Collection
+
+V8 uses a garbage collector to manage memory, freeing up memory that is no longer needed by the program. This process runs parallel to code execution.
+
+#### Garbage Collection Algorithms:
+
+- **Mark and Sweep**: Marks objects that are reachable by the program and sweeps away those that are not.
+- **Scavenger**: Used for short-lived objects, dividing the heap into new and old spaces. Objects start in the new space and move to the old space if they survive a garbage collection cycle.
+- **Mark and Compact**: Used for long-lived objects, marking reachable objects and compacting them into contiguous memory locations.
+- **Incremental**: Breaks up the garbage collection process into smaller steps interleaved with program execution, reducing pause time.
+- **Generational**: Divides objects into different generations based on their age, collecting young objects more frequently than old ones.
+
+#### Orinoco Garbage Collector
+
+The garbage collector in V8, called Orinoco, is a generational garbage collector that uses a combination of mark and sweep, scavenger, and incremental garbage collection algorithms.
+
+# LIBUV
+
+LIBUV is a multi-platform support library with a focus on asynchronous I/O. It was primarily developed for use by Node.js, but it’s also used by other software projects. It consists of three major components:
+
+## Components
+
+1. **Event Loop**: The event loop is the core of every Node.js application. It’s a single-threaded loop that monitors the execution stack and the callback queue. It executes the operations in the queue and checks for any new operations that need to be added to the queue.
+
+2. **Thread Pool**: The thread pool is used to handle asynchronous operations. It’s a pool of threads that are used to execute non-blocking operations.
+
+3. **Callback Queue**: The callback queue is a queue that holds the callbacks that need to be executed by the event loop.
+
+## Phases of the Event Loop
+
+1. **Timers**: This phase executes callbacks scheduled by `setTimeout()` and `setInterval()`.
+
+2. **Poll**: This phase retrieves new I/O events. It executes I/O-related callbacks, such as those for network requests, file system operations, and timers.
+
+3. **Check**: This phase executes callbacks that are scheduled by `setImmediate()`.
+
+4. **Close Callbacks**: This phase executes close callbacks, such as those for socket and file system operations.
+
+There are two more phases after Timer : 
+**Pending Callbacks** - Executes I/O callbacks deferred to the next loop iteration.
+**Idle, prepare** - Used internally.
+
+The event loop continues to run as long as there are callbacks in the queue. When the queue is empty, the event loop exits. Each phase has its own queue, and the event loop moves from one phase to the next. The event loop keeps checking the call stack and the callback queue. If the call stack is empty, it will check the callback queue for any new operations that need to be executed and will push the operations to the call stack.
+
+Before each phase, one more cycle of the event loop is run. This cycle is called the tick. The tick is used to check for any new operations that need to be added to the queue. This cycle checks for `process.nextTick()` and Promise callbacks.
+
+**If there is noo callback in queues, then event loop will wait in the poll phase. 
+Once the callback is available, it will again start the loop.**
+
+# Node.js: Single-Threaded and Multithreaded Aspects
+
+Node.js is primarily **single-threaded** in terms of its event loop, which handles asynchronous operations. However, it can also be considered **multithreaded** due to its use of a thread pool for certain tasks.
+
+## Single-Threaded Event Loop
+- The core of Node.js is the event loop, which runs on a single thread. This event loop handles I/O operations, such as reading from or writing to a file, making network requests, and executing timers.
+
+## Multithreaded Thread Pool
+- Node.js uses a thread pool (provided by the `libuv` library) to handle operations that are too heavy for the event loop to manage efficiently on its own. These operations include:
+  - File system operations
+  - DNS lookups
+  - Compression tasks
+  - Some cryptographic functions
+
+The thread pool allows Node.js to perform these blocking operations asynchronously, without blocking the main event loop. By default, the thread pool has four threads, but this number can be adjusted.
+
+## Node.js Event Loop
+
+Node.js uses a single-threaded event loop to handle asynchronous operations. The event loop continuously checks for events and executes the corresponding callback functions.
+
+### Integration with epoll/kqueue
+
+### Epoll (Linux)
+- When an asynchronous operation (like file I/O or network request) is initiated, Node.js registers the operation with epoll.
+- The event loop waits for the operation to complete without blocking the main thread.
+- Once the operation is ready, epoll notifies the event loop, which then executes the callback associated with the operation.
+
+### Kqueue (BSD-based systems, including macOS)
+- When an asynchronous operation (like file I/O or network request) is initiated, Node.js registers the operation with kqueue.
+- The event loop waits for the operation to complete without blocking the main thread.
+- Once the operation is ready, kqueue notifies the event loop, which then executes the callback associated with the operation.
+
+### Benefits
+This efficient handling of asynchronous tasks allows Node.js to manage numerous concurrent connections with minimal resource usage, making it ideal for scalable network applications.
